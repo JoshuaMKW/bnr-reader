@@ -72,9 +72,9 @@ class RGB5A1(object):
     @staticmethod
     def decode_pixel(pixel: int) -> tuple:
         """ RGBA8888 ONLY """
-        r = ((pixel >> 10) & 0b11111) * 8
-        g = ((pixel >> 5) & 0b11111) * 8
-        b = (pixel & 0b11111) * 8
+        r = ((pixel >> 10) & 0b11111) << 3
+        g = ((pixel >> 5) & 0b11111) << 3
+        b = (pixel & 0b11111) << 3
         a = (pixel >> 15) * 0xFF
 
         return (r, g, b, a)
