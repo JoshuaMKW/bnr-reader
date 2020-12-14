@@ -1,2 +1,2 @@
 # bnr-reader
-Extract and pack BNR files
+Extract and pack `.BNR` files
