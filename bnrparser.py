@@ -19,7 +19,7 @@ def read_string(io, offset: int = 0, maxlen: int = 0, encoding: str = "utf-8") -
             length += 1
         except UnicodeDecodeError:
             raise UnicodeDecodeError(
-                f"{char} at pos {length} is not a valid utf-8 character")
+                f"{char} at pos {length} is not a valid {encoding} character")
 
         if length > (maxlen-1) and maxlen != 0:
             return string
