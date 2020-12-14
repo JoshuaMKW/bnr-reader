@@ -1,3 +1,5 @@
+import json
+
 from argparse import ArgumentParser
 from functools import wraps
 from io import BytesIO
@@ -85,10 +87,10 @@ class BNR(RGB5A1):
     ImgTileWidth = ImageWidth // RGB5A1.TileWidth
     ImgTileHeight = ImageHeight // RGB5A1.TileHeight
 
-    def __init__(self, f: Path, region: Regions = Regions.AMERICA, gameName: str = "", gameTitle: str = "", companyName: str = "", companyTitle: str = "", desc: str = ""):
+    def __init__(self, f: Path, region: Regions = Regions.AMERICA, gameName: str = "", gameTitle: str = "", developerName: str = "", developerTitle: str = "", desc: str = "", overwrite=False):
         self._rawdata = BytesIO(b"\x00" * 0x1960)
         self.load(f, region, gameName, gameTitle,
-                  companyName, companyTitle, desc)
+                  developerName, developerTitle, desc, overwrite)
 
     @property
     @io_preserve
@@ -209,26 +211,55 @@ class BNR(RGB5A1):
 
         return img
 
-    def save(self, dest: Path):
+    def save_bnr(self, dest: Path):
         dest.write_bytes(self._rawdata.getvalue())
 
-    def load(self, f: Path, region: Regions = Regions.AMERICA, gameName: str = "", gameTitle: str = "", companyName: str = "", companyTitle: str = "", desc: str = "", overwrite: bool = False):
+    def save_png(self, dest: Path):
+        img = self.getImage()
+        img.save(str(dest))
+
+        f = dest.parent / (dest.stem + ".json")
+        info = {}
+
+        info["gamename"] = self.gameName
+        info["gametitle"] = self.gameTitle
+        info["developername"] = self.developerName
+        info["developertitle"] = self.developerTitle
+        info["description"] = self.gameDescription
+
+        with f.open("w") as jsonFile:
+            json.dump(info, jsonFile, indent=4)
+
+    def load(self, f: Path, region: Regions = Regions.AMERICA, gameName: str = "", gameTitle: str = "", developerName: str = "", developerTitle: str = "", desc: str = "", overwrite: bool = False):
         if f.suffix == ".bnr":
             self._rawdata.write(f.read_bytes())
             if overwrite:
                 self.magic = region
                 self.gameName = gameName
                 self.gameTitle = gameTitle
-                self.companyName = companyName
-                self.companyTitle = companyTitle
+                self.developerName = developerName
+                self.developerTitle = developerTitle
                 self.gameDescription = desc
         elif f.suffix in (".png", ".jpeg"):
+            j = f.parent / (f.stem + ".json")
+
+            if j.exists() and not overwrite:
+                with j.open("r") as jsonFile:
+                    info = json.load(jsonFile)
+
+                self.gameName = info["gamename"]
+                self.gameTitle = info["gametitle"]
+                self.developerName = info["developername"]
+                self.developerTitle = info["developertitle"]
+                self.gameDescription = info["description"]
+            else:
+                self.gameName = gameName
+                self.gameTitle = gameTitle
+                self.developerName = developerName
+                self.developerTitle = developerTitle
+                self.gameDescription = desc
+
             self.magic = region
-            self.gameName = gameName
-            self.gameTitle = gameTitle
-            self.companyName = companyName
-            self.companyTitle = companyTitle
-            self.gameDescription = desc
 
             self.rawImage = Image.open(f)
 
@@ -243,6 +274,10 @@ if __name__ == "__main__":
                         help="Job to execute",
                         choices=[Jobs.EXTRACT, Jobs.COMPILE],
                         default=Jobs.COMPILE)
+    parser.add_argument("-r", "--region",
+                        help="Game region",
+                        choices=["E", "P", "J"],
+                        default="E")
     parser.add_argument("-g", "--gamename",
                         help="Game short name",
                         default="",
@@ -263,10 +298,9 @@ if __name__ == "__main__":
                         help="Game description",
                         default="",
                         metavar="STR")
-    parser.add_argument("-r", "--region",
-                        help="Game region",
-                        choices=["E", "P", "J"],
-                        default="E")
+    parser.add_argument("-o", "--overwrite",
+                        help="Force arguments over json",
+                        action="store_true")
 
     args = parser.parse_args()
 
@@ -282,16 +316,16 @@ if __name__ == "__main__":
 
     if args.job == Jobs.COMPILE:
         bnr = BNR(Path(args.img).resolve(),
-                  region,
-                  args.gamename,
-                  args.gametitle,
-                  args.devname,
-                  args.devtitle,
-                  args.desc)
+                  region=region,
+                  gameName=args.gamename,
+                  gameTitle=args.gametitle,
+                  developerName=args.devname,
+                  developerTitle=args.devtitle,
+                  desc=args.desc,
+                  overwrite=args.overwrite)
 
-        bnr.save(Path(args.bnr).resolve())
+        bnr.save_bnr(Path(args.bnr).resolve())
     elif args.job == Jobs.EXTRACT:
-        bnr = BNR(Path(args.bnr).resolve())
+        bnr = BNR(Path(args.bnr).resolve(), overwrite=args.overwrite)
 
-        img = bnr.getImage()
-        img.save(str(Path(args.img).resolve()))
+        bnr.save_png(Path(args.img).resolve())
