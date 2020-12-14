@@ -242,8 +242,7 @@ if __name__ == "__main__":
     parser.add_argument("-j", "--job",
                         help="Job to execute",
                         choices=[Jobs.EXTRACT, Jobs.COMPILE],
-                        default=Jobs.COMPILE,
-                        metavar="JOB")
+                        default=Jobs.COMPILE)
     parser.add_argument("-g", "--gamename",
                         help="Game short name",
                         default="",
@@ -267,8 +266,7 @@ if __name__ == "__main__":
     parser.add_argument("-r", "--region",
                         help="Game region",
                         choices=["E", "P", "J"],
-                        default="E",
-                        metavar="REGION")
+                        default="E")
 
     args = parser.parse_args()
 
