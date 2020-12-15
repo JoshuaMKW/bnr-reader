@@ -8,7 +8,7 @@ from pathlib import Path
 from PIL import Image
 
 
-def __read_string(io, offset: int = 0, maxlen: int = 0, encoding: str = "utf-8") -> str:
+def _read_string(io, offset: int = 0, maxlen: int = 0, encoding: str = "utf-8") -> str:
     """ Reads a null terminated string from the specified address """
 
     length = 0
@@ -141,7 +141,7 @@ class BNR(RGB5A1):
     @property
     @io_preserve
     def gameName(self) -> str:
-        return __read_string(self._rawdata, 0x1820, 0x20, encoding="ascii")
+        return _read_string(self._rawdata, 0x1820, 0x20, encoding="ascii")
 
     @gameName.setter
     @io_preserve
@@ -152,7 +152,7 @@ class BNR(RGB5A1):
     @property
     @io_preserve
     def developerName(self) -> str:
-        return __read_string(self._rawdata, 0x1840, 0x20, encoding="ascii")
+        return _read_string(self._rawdata, 0x1840, 0x20, encoding="ascii")
 
     @developerName.setter
     @io_preserve
@@ -163,7 +163,7 @@ class BNR(RGB5A1):
     @property
     @io_preserve
     def gameTitle(self) -> str:
-        return __read_string(self._rawdata, 0x1860, 0x40, encoding="ascii")
+        return _read_string(self._rawdata, 0x1860, 0x40, encoding="ascii")
 
     @gameTitle.setter
     @io_preserve
@@ -174,7 +174,7 @@ class BNR(RGB5A1):
     @property
     @io_preserve
     def developerTitle(self) -> str:
-        return __read_string(self._rawdata, 0x18A0, 0x40, encoding="ascii")
+        return _read_string(self._rawdata, 0x18A0, 0x40, encoding="ascii")
 
     @developerTitle.setter
     @io_preserve
@@ -185,7 +185,7 @@ class BNR(RGB5A1):
     @property
     @io_preserve
     def gameDescription(self) -> str:
-        return __read_string(self._rawdata, 0x18E0, 0x80, encoding="ascii")
+        return _read_string(self._rawdata, 0x18E0, 0x80, encoding="ascii")
 
     @gameDescription.setter
     @io_preserve
