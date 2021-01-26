@@ -8,7 +8,7 @@ from pathlib import Path
 from PIL import Image
 
 
-def _read_string(io, offset: int = 0, maxlen: int = 0, encoding: str = "ascii") -> str:
+def _read_string(io, offset: int = 0, maxlen: int = 0, encoding: str = "ansi") -> str:
     """ Reads a null terminated string from the specified address """
 
     length = 0
@@ -19,10 +19,6 @@ def _read_string(io, offset: int = 0, maxlen: int = 0, encoding: str = "ascii") 
         try:
             string += char.decode(encoding)
             length += 1
-        except UnicodeDecodeError:
-            raise UnicodeDecodeError(
-                f"{char} at pos {length} is not a valid {encoding} character")
-
         if length > (maxlen-1) and maxlen != 0:
             return string
 
@@ -155,57 +151,57 @@ class BNR(RGB5A1):
     @property
     @io_preserve
     def gameName(self) -> str:
-        return _read_string(self._rawdata, 0x1820 + (self.index * 0x140), 0x20, encoding="ascii" if self.region != "NTSC-J" else "shift-jis")
+        return _read_string(self._rawdata, 0x1820 + (self.index * 0x140), 0x20, encoding="ansi" if self.region != "NTSC-J" else "shift-jis")
 
     @gameName.setter
     @io_preserve
     def gameName(self, name: str):
         self._rawdata.seek(0x1820 + (self.index * 0x140))
-        self._rawdata.write(bytes(name[:0x1F], "ascii" if self.region != "NTSC-J" else "shift-jis") + b"\x00")
+        self._rawdata.write(bytes(name[:0x1F], "ansi" if self.region != "NTSC-J" else "shift-jis") + b"\x00")
 
     @property
     @io_preserve
     def developerName(self) -> str:
-        return _read_string(self._rawdata, 0x1840 + (self.index * 0x140), 0x20, encoding="ascii" if self.region != "NTSC-J" else "shift-jis")
+        return _read_string(self._rawdata, 0x1840 + (self.index * 0x140), 0x20, encoding="ansi" if self.region != "NTSC-J" else "shift-jis")
 
     @developerName.setter
     @io_preserve
     def developerName(self, name: str):
         self._rawdata.seek(0x1840 + (self.index * 0x140))
-        self._rawdata.write(bytes(name[:0x1F], "ascii" if self.region != "NTSC-J" else "shift-jis") + b"\x00")
+        self._rawdata.write(bytes(name[:0x1F], "ansi" if self.region != "NTSC-J" else "shift-jis") + b"\x00")
 
     @property
     @io_preserve
     def gameTitle(self) -> str:
-        return _read_string(self._rawdata, 0x1860 + (self.index * 0x140), 0x40, encoding="ascii" if self.region != "NTSC-J" else "shift-jis")
+        return _read_string(self._rawdata, 0x1860 + (self.index * 0x140), 0x40, encoding="ansi" if self.region != "NTSC-J" else "shift-jis")
 
     @gameTitle.setter
     @io_preserve
     def gameTitle(self, name: str):
         self._rawdata.seek(0x1860 + (self.index * 0x140))
-        self._rawdata.write(bytes(name[:0x3F], "ascii" if self.region != "NTSC-J" else "shift-jis") + b"\x00")
+        self._rawdata.write(bytes(name[:0x3F], "ansi" if self.region != "NTSC-J" else "shift-jis") + b"\x00")
 
     @property
     @io_preserve
     def developerTitle(self) -> str:
-        return _read_string(self._rawdata, 0x18A0 + (self.index * 0x140), 0x40, encoding="ascii" if self.region != "NTSC-J" else "shift-jis")
+        return _read_string(self._rawdata, 0x18A0 + (self.index * 0x140), 0x40, encoding="ansi" if self.region != "NTSC-J" else "shift-jis")
 
     @developerTitle.setter
     @io_preserve
     def developerTitle(self, name: str):
         self._rawdata.seek(0x18A0 + (self.index * 0x140))
-        self._rawdata.write(bytes(name[:0x3F], "ascii" if self.region != "NTSC-J" else "shift-jis") + b"\x00")
+        self._rawdata.write(bytes(name[:0x3F], "ansi" if self.region != "NTSC-J" else "shift-jis") + b"\x00")
 
     @property
     @io_preserve
     def gameDescription(self) -> str:
-        return _read_string(self._rawdata, 0x18E0 + (self.index * 0x140), 0x80, encoding="ascii" if self.region != "NTSC-J" else "shift-jis")
+        return _read_string(self._rawdata, 0x18E0 + (self.index * 0x140), 0x80, encoding="ansi" if self.region != "NTSC-J" else "shift-jis")
 
     @gameDescription.setter
     @io_preserve
     def gameDescription(self, name: str):
         self._rawdata.seek(0x18E0 + (self.index * 0x140))
-        self._rawdata.write(bytes(name[:0x7F], "ascii" if self.region != "NTSC-J" else "shift-jis") + b"\x00")
+        self._rawdata.write(bytes(name[:0x7F], "ansi" if self.region != "NTSC-J" else "shift-jis") + b"\x00")
 
     def getImage(self) -> Image:
         _image = self.rawImage
