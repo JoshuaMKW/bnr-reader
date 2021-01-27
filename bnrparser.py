@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 
 from argparse import ArgumentParser
@@ -8,21 +10,10 @@ from pathlib import Path
 from PIL import Image
 
 
-def _read_string(io, offset: int = 0, maxlen: int = 0, encoding: str = "ansi") -> str:
-    """ Reads a null terminated string from the specified address """
-
-    length = 0
-    string = ""
-
+def _read_string(io, offset: int = 0, maxlen: int = 0, encoding: str = "iso-8859-1") -> str:
     io.seek(offset)
-    while (char := io.read(1)) != b"\x00":
-        try:
-            string += char.decode(encoding)
-            length += 1
-        if length > (maxlen-1) and maxlen != 0:
-            return string
-
-    return string
+    cString = io.read(maxlen)
+    return cString.rstrip(b"\x00").decode(encoding)
 
 
 def io_preserve(func):
@@ -33,12 +24,6 @@ def io_preserve(func):
         self._rawdata.seek(_loc)
         return value
     return wrapper
-
-
-class Regions:
-    AMERICA = 0
-    EUROPE = 1
-    JAPAN = 2
 
 
 class Jobs:
@@ -77,6 +62,11 @@ class RGB5A1(object):
 
 
 class BNR(RGB5A1):
+    class Regions:
+        AMERICA = 0
+        EUROPE = 1
+        JAPAN = 2
+
     ImageWidth = 96
     ImageHeight = 32
 
@@ -89,17 +79,25 @@ class BNR(RGB5A1):
         self.regionID = region
         self.index = 0
 
+    @classmethod
+    def from_data(cls, obj, region: Regions = Regions.AMERICA, size: int = -1):
+        self = cls.__new__(cls)
+        self._rawdata = BytesIO(obj.read(size))
+        self.regionID = region
+        self.index = 0
+        return self
+
     @property
     def isBNR2(self) -> bool:
         return self.magic == "BNR2" and len(self._rawdata.getbuffer()) == 0x1FA0
 
     @property
     def region(self) -> str:
-        if self.regionID == Regions.AMERICA:
+        if self.regionID == BNR.Regions.AMERICA:
             return "NTSC-U"
-        elif self.regionID == Regions.EUROPE:
+        elif self.regionID == BNR.Regions.EUROPE:
             return "PAL"
-        elif self.regionID == Regions.JAPAN:
+        elif self.regionID == BNR.Regions.JAPAN:
             return "NTSC-J"
         else:
             return "NTSC-K"
@@ -108,14 +106,14 @@ class BNR(RGB5A1):
     @io_preserve
     def magic(self) -> str:
         self._rawdata.seek(0)
-        return str(self._rawdata.read(4))
+        return self._rawdata.read(4).decode("iso-8859-1")
 
     @magic.setter
     @io_preserve
     def magic(self, region: Regions):
         self._rawdata.seek(0)
 
-        if region == Regions.EUROPE and len(self._rawdata.getbuffer()) == 0x1FA0:
+        if region == BNR.Regions.EUROPE and len(self._rawdata.getbuffer()) == 0x1FA0:
             self._rawdata.write(b"BNR2")
         else:
             self._rawdata.write(b"BNR1")
@@ -133,7 +131,7 @@ class BNR(RGB5A1):
         if isinstance(_img, bytes):
             self._rawdata.write(_img[:0x1800])
         elif isinstance(_img, BytesIO):
-            self._rawdata.write(_img.getvalue()[:1800])
+            self._rawdata.write(_img.getvalue()[:0x1800])
         elif isinstance(_img, Image.Image):
             smallImg = _img.resize((BNR.ImageWidth, BNR.ImageHeight))
             for yBlock in range(BNR.ImgTileHeight):
@@ -151,57 +149,68 @@ class BNR(RGB5A1):
     @property
     @io_preserve
     def gameName(self) -> str:
-        return _read_string(self._rawdata, 0x1820 + (self.index * 0x140), 0x20, encoding="ansi" if self.region != "NTSC-J" else "shift-jis")
+        print(self.index, self.region)
+        return _read_string(self._rawdata, 0x1820 + (self.index * 0x140), 0x20, encoding="iso-8859-1" if self.region != "NTSC-J" else "shift-jis")
 
     @gameName.setter
     @io_preserve
     def gameName(self, name: str):
         self._rawdata.seek(0x1820 + (self.index * 0x140))
-        self._rawdata.write(bytes(name[:0x1F], "ansi" if self.region != "NTSC-J" else "shift-jis") + b"\x00")
+        self._rawdata.write(b"\x00" * 0x20)
+        self._rawdata.seek(0x1820 + (self.index * 0x140))
+        self._rawdata.write(bytes(name[:0x1F], "iso-8859-1" if self.region != "NTSC-J" else "shift-jis"))
 
     @property
     @io_preserve
     def developerName(self) -> str:
-        return _read_string(self._rawdata, 0x1840 + (self.index * 0x140), 0x20, encoding="ansi" if self.region != "NTSC-J" else "shift-jis")
+        return _read_string(self._rawdata, 0x1840 + (self.index * 0x140), 0x20, encoding="iso-8859-1" if self.region != "NTSC-J" else "shift-jis")
 
     @developerName.setter
     @io_preserve
     def developerName(self, name: str):
         self._rawdata.seek(0x1840 + (self.index * 0x140))
-        self._rawdata.write(bytes(name[:0x1F], "ansi" if self.region != "NTSC-J" else "shift-jis") + b"\x00")
+        self._rawdata.write(b"\x00" * 0x20)
+        self._rawdata.seek(0x1840 + (self.index * 0x140))
+        self._rawdata.write(bytes(name[:0x1F], "iso-8859-1" if self.region != "NTSC-J" else "shift-jis"))
 
     @property
     @io_preserve
     def gameTitle(self) -> str:
-        return _read_string(self._rawdata, 0x1860 + (self.index * 0x140), 0x40, encoding="ansi" if self.region != "NTSC-J" else "shift-jis")
+        return _read_string(self._rawdata, 0x1860 + (self.index * 0x140), 0x40, encoding="iso-8859-1" if self.region != "NTSC-J" else "shift-jis")
 
     @gameTitle.setter
     @io_preserve
     def gameTitle(self, name: str):
         self._rawdata.seek(0x1860 + (self.index * 0x140))
-        self._rawdata.write(bytes(name[:0x3F], "ansi" if self.region != "NTSC-J" else "shift-jis") + b"\x00")
+        self._rawdata.write(b"\x00" * 0x40)
+        self._rawdata.seek(0x1860 + (self.index * 0x140))
+        self._rawdata.write(bytes(name[:0x3F], "iso-8859-1" if self.region != "NTSC-J" else "shift-jis"))
 
     @property
     @io_preserve
     def developerTitle(self) -> str:
-        return _read_string(self._rawdata, 0x18A0 + (self.index * 0x140), 0x40, encoding="ansi" if self.region != "NTSC-J" else "shift-jis")
+        return _read_string(self._rawdata, 0x18A0 + (self.index * 0x140), 0x40, encoding="iso-8859-1" if self.region != "NTSC-J" else "shift-jis")
 
     @developerTitle.setter
     @io_preserve
     def developerTitle(self, name: str):
         self._rawdata.seek(0x18A0 + (self.index * 0x140))
-        self._rawdata.write(bytes(name[:0x3F], "ansi" if self.region != "NTSC-J" else "shift-jis") + b"\x00")
+        self._rawdata.write(b"\x00" * 0x40)
+        self._rawdata.seek(0x18A0 + (self.index * 0x140))
+        self._rawdata.write(bytes(name[:0x3F], "iso-8859-1" if self.region != "NTSC-J" else "shift-jis"))
 
     @property
     @io_preserve
     def gameDescription(self) -> str:
-        return _read_string(self._rawdata, 0x18E0 + (self.index * 0x140), 0x80, encoding="ansi" if self.region != "NTSC-J" else "shift-jis")
+        return _read_string(self._rawdata, 0x18E0 + (self.index * 0x140), 0x80, encoding="iso-8859-1" if self.region != "NTSC-J" else "shift-jis")
 
     @gameDescription.setter
     @io_preserve
     def gameDescription(self, name: str):
         self._rawdata.seek(0x18E0 + (self.index * 0x140))
-        self._rawdata.write(bytes(name[:0x7F], "ansi" if self.region != "NTSC-J" else "shift-jis") + b"\x00")
+        self._rawdata.write(b"\x00" * 0x80)
+        self._rawdata.seek(0x18E0 + (self.index * 0x140))
+        self._rawdata.write(bytes(name[:0x7F], "iso-8859-1" if self.region != "NTSC-J" else "shift-jis"))
 
     def getImage(self) -> Image:
         _image = self.rawImage
@@ -241,10 +250,10 @@ class BNR(RGB5A1):
             json.dump(info, jsonFile, indent=4)
 
     def load(self, f: Path, region: Regions = Regions.AMERICA, gameName: str = "", gameTitle: str = "", developerName: str = "", developerTitle: str = "", desc: str = "", overwrite: bool = False):
+        self.regionID = region
         if f.suffix == ".bnr":
             self._rawdata = BytesIO(f.read_bytes())
             if overwrite:
-                self.regionID = region
                 self.magic = region
                 self.gameName = gameName
                 self.gameTitle = gameTitle
@@ -270,7 +279,6 @@ class BNR(RGB5A1):
                 self.developerTitle = developerTitle
                 self.gameDescription = desc
 
-            self.regionID = region
             self.magic = region
 
             self.rawImage = Image.open(f)
@@ -317,11 +325,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.region == "E":
-        region = Regions.AMERICA
+        region = BNR.Regions.AMERICA
     elif args.region == "P":
-        region = Regions.EUROPE
+        region = BNR.Regions.EUROPE
     elif args.region == "J":
-        region = Regions.JAPAN
+        region = BNR.Regions.JAPAN
     else:
         raise NotImplementedError(
             f"Unknown region type {args.region} provided")
