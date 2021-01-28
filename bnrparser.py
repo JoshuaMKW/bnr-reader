@@ -66,6 +66,7 @@ class BNR(RGB5A1):
         AMERICA = 0
         EUROPE = 1
         JAPAN = 2
+        KOREA = 0
 
     ImageWidth = 96
     ImageHeight = 32
