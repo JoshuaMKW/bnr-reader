@@ -150,7 +150,6 @@ class BNR(RGB5A1):
     @property
     @io_preserve
     def gameName(self) -> str:
-        print(self.index, self.region)
         return _read_string(self._rawdata, 0x1820 + (self.index * 0x140), 0x20, encoding="iso-8859-1" if self.region != "NTSC-J" else "shift-jis")
 
     @gameName.setter
